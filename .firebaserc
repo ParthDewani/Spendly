@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "spendly-41d72"
+  },
+  "targets": {
+    "spendly-41d72": {
+      "hosting": {
+        "spendlylive": [
+          "spendlylive"
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Spendly — Take control of your money.</title>
+<meta name="description" content="Spendly is a personal finance dashboard for tracking income, expenses, budgets and spending insights." />
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" defer></script>
+<script type="module" src="js/firebase-init.js"></script>
+<script type="module" src="js/firestore-sync.js"></script>
+
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body data-theme="light">
+
+<!-- ============ FILE:// PROTOCOL WARNING ============ -->
+<div class="protocol-warning" id="protocolWarning" hidden>
+  <i data-lucide="alert-triangle"></i>
+  <p>
+    You're opening this file directly (<code>file://</code>), which some browsers — Microsoft Edge in particular —
+    don't reliably use to save your data. For saved data to persist properly, serve this folder locally instead, e.g.
+    run <code>python3 -m http.server</code> in the <code>spendly</code> folder and open <code>http://localhost:8000</code>.
+  </p>
+  <button class="icon-btn" id="dismissProtocolWarning" aria-label="Dismiss"><i data-lucide="x"></i></button>
+</div>
+
+<!-- ============ MOBILE TOP BAR ============ -->
+<div class="mobile-bar">
+  <button class="icon-btn" id="mobileMenuBtn" aria-label="Open menu" aria-expanded="false" aria-controls="sidebar">
+    <i data-lucide="menu"></i>
+  </button>
+  <div class="mobile-bar__brand">
+    <span class="brand-mark">S</span>
+    <span class="brand-word">Spendly</span>
+  </div>
+  <button class="icon-btn" id="mobileAddBtn" aria-label="Add transaction">
+    <i data-lucide="plus"></i>
+  </button>
+</div>
+<div class="sidebar-scrim" id="sidebarScrim"></div>
+
+<div class="shell">
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar__brand">
+      <span class="brand-mark">S</span>
+      <div>
+        <p class="brand-word">Spendly</p>
+        <p class="brand-tag">Take control of your money.</p>
+      </div>
+    </div>
+
+    <nav class="sidebar__nav" aria-label="Primary">
+      <button class="nav-item is-active" data-view="dashboard">
+        <i data-lucide="layout-grid"></i><span>Dashboard</span>
+      </button>
+      <button class="nav-item" data-view="transactions">
+        <i data-lucide="arrow-left-right"></i><span>Transactions</span>
+      </button>
+      <button class="nav-item" data-view="budgets">
+        <i data-lucide="pie-chart"></i><span>Budgets</span>
+      </button>
+      <button class="nav-item" data-view="analytics">
+        <i data-lucide="bar-chart-3"></i><span>Analytics</span>
+      </button>
+      <button class="nav-item" data-view="settings">
+        <i data-lucide="settings"></i><span>Settings</span>
+      </button>
+    </nav>
+
+    <div class="sidebar__footer">
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
+        <i data-lucide="sun" class="icon-sun"></i>
+        <i data-lucide="moon" class="icon-moon"></i>
+        <span id="themeToggleLabel">Light mode</span>
+      </button>
+      <div class="user-chip" id="userChip"></div>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <div class="main">
+    <header class="topbar">
+      <div class="topbar__greeting">
+        <h1 id="greetingText">Good evening, Parth <span class="wave">👋</span></h1>
+        <p>Here's your financial overview.</p>
+      </div>
+      <div class="topbar__actions">
+        <div class="month-select">
+          <i data-lucide="calendar"></i>
+          <select id="monthSelector" aria-label="Select month"></select>
+        </div>
+        <button class="icon-btn" id="notifBtn" aria-label="Notifications">
+          <i data-lucide="bell"></i>
+          <span class="notif-dot" id="notifDot" hidden></span>
+        </button>
+        <button class="btn btn--primary" id="addTransactionBtn">
+          <i data-lucide="plus"></i> Add Transaction
+        </button>
+      </div>
+    </header>
+
+    <!-- ============ DASHBOARD VIEW ============ -->
+    <section class="view" id="view-dashboard" data-view-panel>
+      <div class="stat-grid">
+        <article class="stat-card">
+          <div class="stat-card__top">
+            <span class="stat-card__label">Total Balance</span>
+            <span class="stat-card__icon stat-card__icon--primary"><i data-lucide="wallet"></i></span>
+          </div>
+          <p class="stat-card__value" id="statBalance">₹0</p>
+          <p class="stat-card__delta" id="statBalanceDelta">—</p>
+        </article>
+        <article class="stat-card">
+          <div class="stat-card__top">
+            <span class="stat-card__label">Total Income</span>
+            <span class="stat-card__icon stat-card__icon--success"><i data-lucide="trending-up"></i></span>
+          </div>
+          <p class="stat-card__value" id="statIncome">₹0</p>
+          <p class="stat-card__delta" id="statIncomeDelta">—</p>
+        </article>
+        <article class="stat-card">
+          <div class="stat-card__top">
+            <span class="stat-card__label">Total Expenses</span>
+            <span class="stat-card__icon stat-card__icon--danger"><i data-lucide="trending-down"></i></span>
+          </div>
+          <p class="stat-card__value" id="statExpenses">₹0</p>
+          <p class="stat-card__delta" id="statExpensesDelta">—</p>
+        </article>
+        <article class="stat-card">
+          <div class="stat-card__top">
+            <span class="stat-card__label">Savings Rate</span>
+            <span class="stat-card__icon stat-card__icon--warning"><i data-lucide="target"></i></span>
+          </div>
+          <p class="stat-card__value" id="statSavings">0%</p>
+          <p class="stat-card__delta" id="statSavingsDelta">—</p>
+        </article>
+      </div>
+
+      <div class="dash-grid">
+        <div class="panel panel--chart">
+          <div class="panel__head">
+            <h2>Spending overview</h2>
+            <p>Where this month's money went</p>
+          </div>
+          <div class="chart-wrap chart-wrap--doughnut">
+            <canvas id="chartSpendingOverview"></canvas>
+            <div class="empty-inline" id="emptySpendingOverview" hidden>
+              <i data-lucide="pie-chart"></i>
+              <p>No expenses yet this month</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel panel--chart">
+          <div class="panel__head">
+            <h2>Income vs expenses</h2>
+            <p>Last 6 months</p>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="chartIncomeExpense"></canvas>
+          </div>
+        </div>
+
+        <div class="panel panel--insights">
+          <div class="panel__head">
+            <h2>Insights</h2>
+            <p>Generated from your activity</p>
+          </div>
+          <ul class="insight-list" id="insightList"></ul>
+        </div>
+
+        <div class="panel panel--goal">
+          <div class="panel__head">
+            <h2>Savings goal</h2>
+            <p id="goalSubtitle">Track progress toward something you want</p>
+          </div>
+          <div id="goalContent"></div>
+        </div>
+
+        <div class="panel panel--recent">
+          <div class="panel__head panel__head--row">
+            <div>
+              <h2>Recent transactions</h2>
+              <p>Latest activity this month</p>
+            </div>
+            <button class="link-btn" data-view-link="transactions">View all <i data-lucide="arrow-right"></i></button>
+          </div>
+          <div id="recentTransactionsList"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ TRANSACTIONS VIEW ============ -->
+    <section class="view" id="view-transactions" data-view-panel hidden>
+      <div class="panel">
+        <div class="panel__head panel__head--row">
+          <div>
+            <h2>Transactions</h2>
+            <p>Search, filter and manage every entry</p>
+          </div>
+          <div class="panel__head-actions">
+            <button class="btn btn--ghost" id="importCsvBtn"><i data-lucide="upload"></i> Import CSV</button>
+            <button class="btn btn--ghost" id="exportCsvBtn"><i data-lucide="download"></i> Export CSV</button>
+          </div>
+        </div>
+
+        <div class="filter-bar">
+          <div class="search-field">
+            <i data-lucide="search"></i>
+            <input type="text" id="searchInput" placeholder="Search transactions..." aria-label="Search transactions" />
+          </div>
+          <select id="filterType" aria-label="Filter by type">
+            <option value="all">All types</option>
+            <option value="income">Income</option>
+            <option value="expense">Expense</option>
+          </select>
+          <select id="filterCategory" aria-label="Filter by category"></select>
+          <select id="filterDate" aria-label="Filter by date">
+            <option value="all">All dates</option>
+            <option value="this-month">This month</option>
+            <option value="last-month">Last month</option>
+          </select>
+          <select id="sortBy" aria-label="Sort transactions">
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="highest">Highest amount</option>
+            <option value="lowest">Lowest amount</option>
+          </select>
+        </div>
+
+        <div id="transactionsTableWrap"></div>
+      </div>
+    </section>
+
+    <!-- ============ BUDGETS VIEW ============ -->
+    <section class="view" id="view-budgets" data-view-panel hidden>
+      <div class="panel">
+        <div class="panel__head panel__head--row">
+          <div>
+            <h2>Monthly budgets</h2>
+            <p>Set limits and track how close you are</p>
+          </div>
+          <button class="btn btn--primary" id="addBudgetBtn"><i data-lucide="plus"></i> Set Budget</button>
+        </div>
+        <div class="budget-grid" id="budgetGrid"></div>
+      </div>
+    </section>
+
+    <!-- ============ ANALYTICS VIEW ============ -->
+    <section class="view" id="view-analytics" data-view-panel hidden>
+      <div class="analytics-grid">
+        <div class="panel panel--chart">
+          <div class="panel__head"><h2>Spending by category</h2><p>Selected month</p></div>
+          <div class="chart-wrap chart-wrap--doughnut"><canvas id="chartAnalyticsCategory"></canvas></div>
+        </div>
+        <div class="panel panel--chart">
+          <div class="panel__head"><h2>Monthly spending trend</h2><p>Last 6 months</p></div>
+          <div class="chart-wrap"><canvas id="chartAnalyticsTrend"></canvas></div>
+        </div>
+        <div class="panel panel--chart">
+          <div class="panel__head"><h2>Income vs expense</h2><p>Last 6 months</p></div>
+          <div class="chart-wrap"><canvas id="chartAnalyticsIncomeExpense"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="panel__head"><h2>Top spending categories</h2><p>Selected month</p></div>
+          <ol class="rank-list" id="topCategoriesList"></ol>
+        </div>
+        <div class="panel panel--chart panel--wide">
+          <div class="panel__head"><h2>Savings trend</h2><p>Last 6 months</p></div>
+          <div class="chart-wrap"><canvas id="chartSavingsTrend"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SETTINGS VIEW ============ -->
+    <section class="view" id="view-settings" data-view-panel hidden>
+      <div class="settings-grid">
+        <div class="panel">
+          <div class="panel__head"><h2>Appearance</h2><p>Choose how Spendly looks</p></div>
+          <div class="appearance-options">
+            <button class="appearance-option is-active" data-theme-choice="light">
+              <i data-lucide="sun"></i> Light mode
+            </button>
+            <button class="appearance-option" data-theme-choice="dark">
+              <i data-lucide="moon"></i> Dark mode
+            </button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel__head"><h2>Currency</h2><p>Used across the app</p></div>
+          <div class="currency-display">
+            <i data-lucide="indian-rupee"></i>
+            <div>
+              <p class="currency-display__code">INR — Indian Rupee</p>
+              <p class="currency-display__note">Currently the only supported currency</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel__head panel__head--row">
+            <div><h2>Categories</h2><p>Create and manage transaction categories</p></div>
+            <button class="btn btn--ghost" id="addCategoryBtn"><i data-lucide="plus"></i> Add Category</button>
+          </div>
+          <div class="category-list" id="categoryList"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel__head"><h2>Savings goal</h2><p>Manage your active goal</p></div>
+          <div id="settingsGoalContent"></div>
+        </div>
+
+        <div class="panel panel--wide">
+          <div class="panel__head"><h2>Data</h2><p>Everything lives in this browser</p></div>
+          <div class="data-actions">
+            <button class="btn btn--ghost" id="settingsExportBtn"><i data-lucide="download"></i> Export Data</button>
+            <button class="btn btn--ghost" id="settingsImportBtn"><i data-lucide="upload"></i> Import Data</button>
+            <button class="btn btn--danger-ghost" id="clearDataBtn"><i data-lucide="trash-2"></i> Clear All Data</button>
+          </div>
+          <p class="privacy-note">
+            <i data-lucide="shield-check"></i>
+            Your financial data is cached in this browser for speed, and synced to your own account in Cloud Firestore when you're logged in — only you can read or write it. Logging out clears it from this device. Your login itself is handled by Firebase Authentication.
+          </p>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- ============ MODAL: TRANSACTION ============ -->
+<div class="modal-overlay" id="transactionModalOverlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="transactionModalTitle">
+    <div class="modal__head">
+      <h2 id="transactionModalTitle">Add Transaction</h2>
+      <button class="icon-btn" data-close-modal="transactionModalOverlay" aria-label="Close"><i data-lucide="x"></i></button>
+    </div>
+    <form id="transactionForm" novalidate>
+      <input type="hidden" id="transactionId" />
+      <div class="type-toggle" role="radiogroup" aria-label="Transaction type">
+        <button type="button" class="type-toggle__option is-active" data-type="expense" role="radio" aria-checked="true">
+          <i data-lucide="arrow-down-circle"></i> Expense
+        </button>
+        <button type="button" class="type-toggle__option" data-type="income" role="radio" aria-checked="false">
+          <i data-lucide="arrow-up-circle"></i> Income
+        </button>
+      </div>
+
+      <div class="field">
+        <label for="transactionAmount">Amount</label>
+        <div class="amount-input">
+          <span>₹</span>
+          <input type="number" id="transactionAmount" min="0" step="0.01" placeholder="0.00" inputmode="decimal" />
+        </div>
+        <p class="field-error" id="errAmount" hidden></p>
+      </div>
+
+      <div class="field">
+        <label for="transactionCategory">Category</label>
+        <select id="transactionCategory"></select>
+        <p class="field-error" id="errCategory" hidden></p>
+      </div>
+
+      <div class="field">
+        <label for="transactionDescription">Description</label>
+        <input type="text" id="transactionDescription" placeholder="e.g. Lunch with team" />
+        <p class="field-error" id="errDescription" hidden></p>
+      </div>
+
+      <div class="field">
+        <label for="transactionDate">Date</label>
+        <input type="date" id="transactionDate" />
+        <p class="field-error" id="errDate" hidden></p>
+      </div>
+
+      <div class="modal__actions">
+        <button type="button" class="btn btn--ghost" data-close-modal="transactionModalOverlay">Cancel</button>
+        <button type="submit" class="btn btn--primary" id="transactionSubmitBtn">Add Transaction</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ MODAL: LOGOUT CONFIRM ============ -->
+<div class="modal-overlay" id="logoutModalOverlay" hidden>
+  <div class="modal modal--small" role="alertdialog" aria-modal="true" aria-labelledby="logoutModalTitle">
+    <div class="modal__head">
+      <h2 id="logoutModalTitle">Log out?</h2>
+      <button class="icon-btn" data-close-modal="logoutModalOverlay" aria-label="Close"><i data-lucide="x"></i></button>
+    </div>
+    <p class="modal__body-text">You'll be signed out of Spendly on this device. Your data stays safely synced to your account and will be here next time you log in.</p>
+    <div class="modal__actions">
+      <button type="button" class="btn btn--ghost" data-close-modal="logoutModalOverlay">Cancel</button>
+      <button type="button" class="btn btn--danger" id="confirmLogoutBtn">Log Out</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: DELETE CONFIRM ============ -->
+<div class="modal-overlay" id="deleteModalOverlay" hidden>
+  <div class="modal modal--small" role="alertdialog" aria-modal="true" aria-labelledby="deleteModalTitle">
+    <div class="modal__head">
+      <h2 id="deleteModalTitle">Delete Transaction?</h2>
+      <button class="icon-btn" data-close-modal="deleteModalOverlay" aria-label="Close"><i data-lucide="x"></i></button>
+    </div>
+    <p class="modal__body-text" id="deleteModalText"></p>
+    <p class="modal__hint">This action cannot be undone.</p>
+    <div class="modal__actions">
+      <button type="button" class="btn btn--ghost" data-close-modal="deleteModalOverlay">Cancel</button>
+      <button type="button" class="btn btn--danger" id="confirmDeleteBtn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: BUDGET ============ -->
+<div class="modal-overlay" id="budgetModalOverlay" hidden>
+  <div class="modal modal--small" role="dialog" aria-modal="true" aria-labelledby="budgetModalTitle">
+    <div class="modal__head">
+      <h2 id="budgetModalTitle">Set Budget</h2>
+      <button class="icon-btn" data-close-modal="budgetModalOverlay" aria-label="Close"><i data-lucide="x"></i></button>
+    </div>
+    <form id="budgetForm" novalidate>
+      <div class="field">
+        <label for="budgetCategory">Category</label>
+        <select id="budgetCategory"></select>
+      </div>
+      <div class="field">
+        <label for="budgetAmount">Monthly limit</label>
+        <div class="amount-input">
+          <span>₹</span>
+          <input type="number" id="budgetAmount" min="0" step="1" placeholder="0" />
+        </div>
+        <p class="field-error" id="errBudgetAmount" hidden></p>
+      </div>
+      <div class="modal__actions">
+        <button type="button" class="btn btn--ghost" data-close-modal="budgetModalOverlay">Cancel</button>
+        <button type="submit" class="btn btn--primary">Save Budget</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ MODAL: CATEGORY ============ -->
+<div class="modal-overlay" id="categoryModalOverlay" hidden>
+  <div class="modal modal--small" role="dialog" aria-modal="true" aria-labelledby="categoryModalTitle">
+    <div class="modal__head">
+      <h2 id="categoryModalTitle">Add Category</h2>
+      <button class="icon-btn" data-close-modal="categoryModalOverlay" aria-label="Close"><i data-lucide="x"></i></button>
+    </div>
+    <form id="categoryForm" novalidate>
+      <div class="type-toggle" role="radiogroup" aria-label="Category applies to">
+        <button type="button" class="type-toggle__option is-active" data-cat-type="expense" role="radio" aria-checked="true">
+          <i data-lucide="arrow-down-circle"></i> Expense
+        </button>
+        <button type="button" class="type-toggle__option" data-cat-type="income" role="radio" aria-checked="false">
+          <i data-lucide="arrow-up-circle"></i> Income
+        </button>
+      </div>
+      <div class="field">
+        <label for="categoryName">Category name</label>
+        <input type="text" id="categoryName" placeholder="e.g. Subscriptions" />
+        <p class="field-error" id="errCategoryName" hidden></p>
+      </div>
+      <div class="field">
+        <label>Choose icon</label>
+        <div class="icon-picker" id="iconPicker"></div>
+      </div>
+      <div class="modal__actions">
+        <button type="button" class="btn btn--ghost" data-close-modal="categoryModalOverlay">Cancel</button>
+        <button type="submit" class="btn btn--primary">Create</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ MODAL: SAVINGS GOAL ============ -->
+<div class="modal-overlay" id="goalModalOverlay" hidden>
+  <div class="modal modal--small" role="dialog" aria-modal="true" aria-labelledby="goalModalTitle">
+    <div class="modal__head">
+      <h2 id="goalModalTitle">Savings Goal</h2>
+      <button class="icon-btn" data-close-modal="goalModalOverlay" aria-label="Close"><i data-lucide="x"></i></button>
+    </div>
+    <form id="goalForm" novalidate>
+      <div class="field">
+        <label for="goalName">Goal name</label>
+        <input type="text" id="goalName" placeholder="e.g. New Laptop" />
+        <p class="field-error" id="errGoalName" hidden></p>
+      </div>
+      <div class="field">
+        <label for="goalTarget">Target amount</label>
+        <div class="amount-input"><span>₹</span><input type="number" id="goalTarget" min="0" step="1" placeholder="0" /></div>
+        <p class="field-error" id="errGoalTarget" hidden></p>
+      </div>
+      <div class="field">
+        <label for="goalSaved">Amount already saved</label>
+        <div class="amount-input"><span>₹</span><input type="number" id="goalSaved" min="0" step="1" placeholder="0" /></div>
+      </div>
+      <div class="modal__actions">
+        <button type="button" class="btn btn--danger-ghost" id="deleteGoalBtn" hidden>Delete Goal</button>
+        <button type="button" class="btn btn--ghost" data-close-modal="goalModalOverlay">Cancel</button>
+        <button type="submit" class="btn btn--primary">Save Goal</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ MODAL: CSV IMPORT PREVIEW ============ -->
+<div class="modal-overlay" id="importModalOverlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="importModalTitle">
+    <div class="modal__head">
+      <h2 id="importModalTitle">Import Transactions</h2>
+      <button class="icon-btn" data-close-modal="importModalOverlay" aria-label="Close"><i data-lucide="x"></i></button>
+    </div>
+    <div id="importDropZone" class="import-dropzone">
+      <i data-lucide="upload-cloud"></i>
+      <p>Choose a CSV file to import</p>
+      <p class="import-dropzone__hint">Columns expected: Date, Type, Category, Description, Amount</p>
+      <label class="btn btn--primary" for="importFileInput">Choose File</label>
+      <input type="file" id="importFileInput" accept=".csv" hidden />
+    </div>
+    <div id="importPreview" hidden>
+      <p class="import-preview__count" id="importCount"></p>
+      <div class="table-scroll">
+        <table class="data-table" id="importTable"></table>
+      </div>
+      <p class="field-error" id="importError" hidden></p>
+      <div class="modal__actions">
+        <button type="button" class="btn btn--ghost" id="importCancelBtn">Cancel</button>
+        <button type="button" class="btn btn--primary" id="importConfirmBtn">Import</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: CLEAR DATA CONFIRM ============ -->
+<div class="modal-overlay" id="clearDataModalOverlay" hidden>
+  <div class="modal modal--small" role="alertdialog" aria-modal="true" aria-labelledby="clearDataModalTitle">
+    <div class="modal__head">
+      <h2 id="clearDataModalTitle">Clear all data?</h2>
+      <button class="icon-btn" data-close-modal="clearDataModalOverlay" aria-label="Close"><i data-lucide="x"></i></button>
+    </div>
+    <p class="modal__body-text">This permanently deletes every transaction, budget, category and goal stored in this browser and resets Spendly to its default empty state.</p>
+    <p class="modal__hint">This action cannot be undone.</p>
+    <div class="modal__actions">
+      <button type="button" class="btn btn--ghost" data-close-modal="clearDataModalOverlay">Cancel</button>
+      <button type="button" class="btn btn--danger" id="confirmClearDataBtn">Clear Everything</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: LOGIN / SIGN UP ============ -->
+<div class="modal-overlay" id="authModalOverlay" hidden>
+  <div class="modal modal--auth" role="dialog" aria-modal="true" aria-labelledby="authModalTitle">
+    <div class="modal__head">
+      <h2 id="authModalTitle">Log in to Spendly</h2>
+      <button class="icon-btn" data-close-modal="authModalOverlay" aria-label="Close"><i data-lucide="x"></i></button>
+    </div>
+    <p class="auth-subtitle">Sign in to sync your spending across every device.</p>
+
+    <button type="button" class="btn btn--google" id="googleSignInBtn">
+      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+        <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.9c1.7-1.57 2.7-3.88 2.7-6.62z"/>
+        <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.26c-.8.54-1.84.86-3.06.86-2.35 0-4.34-1.59-5.05-3.72H.96v2.33A9 9 0 0 0 9 18z"/>
+        <path fill="#FBBC05" d="M3.95 10.7A5.4 5.4 0 0 1 3.67 9c0-.59.1-1.17.28-1.7V4.97H.96A9 9 0 0 0 0 9c0 1.45.35 2.83.96 4.03l2.99-2.33z"/>
+        <path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.97l2.99 2.33C4.66 5.17 6.65 3.58 9 3.58z"/>
+      </svg>
+      Continue with Google
+    </button>
+
+    <div class="auth-divider"><span>or continue with email</span></div>
+
+    <!-- Email / password -->
+    <form id="emailAuthForm" novalidate>
+      <div class="field" id="fieldAuthName" hidden>
+        <label for="authName">Name</label>
+        <input type="text" id="authName" placeholder="Your name" autocomplete="name" />
+      </div>
+      <div class="field">
+        <label for="authEmail">Email</label>
+        <input type="email" id="authEmail" placeholder="you@example.com" autocomplete="email" />
+        <p class="field-error" id="errAuthEmail" hidden></p>
+      </div>
+      <div class="field">
+        <label for="authPassword">Password</label>
+        <input type="password" id="authPassword" placeholder="••••••••" autocomplete="current-password" />
+        <p class="field-error" id="errAuthPassword" hidden></p>
+      </div>
+      <p class="field-error" id="errAuthGeneral" hidden></p>
+      <button type="submit" class="btn btn--primary auth-submit" id="emailAuthSubmitBtn">Log In</button>
+      <p class="auth-switch">
+        <span id="authSwitchText">Don't have an account?</span>
+        <button type="button" class="link-btn" id="authSwitchModeBtn">Sign up</button>
+      </p>
+    </form>
+
+    <p class="privacy-note auth-privacy">
+      <i data-lucide="shield-check"></i>
+      Your login is handled by Firebase Authentication. Spendly never sees or stores your password.
+    </p>
+  </div>
+</div>
+
+<!-- ============ TOASTS ============ -->
+<div class="toast-stack" id="toastStack" aria-live="polite"></div>
+
+<script src="js/utils.js" defer></script>
+<script src="js/storage.js" defer></script>
+<script src="js/data.js" defer></script>
+<script src="js/transactions.js" defer></script>
+<script src="js/budgets.js" defer></script>
+<script src="js/charts.js" defer></script>
+<script src="js/insights.js" defer></script>
+<script src="js/app.js" defer></script>
+</body>
+</html>

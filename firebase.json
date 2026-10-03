@@ -1,0 +1,11 @@
+{
+  "hosting": {
+    "target": "spendlylive",
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
+  }
+}
