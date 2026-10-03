@@ -145,7 +145,3 @@ Built as a portfolio piece:
 
 **Spendly — Personal Finance Dashboard**
 A responsive personal finance web app featuring transaction tracking, budget monitoring, financial analytics, interactive charts, CSV import/export, and cross-device sync via Firebase Authentication and Cloud Firestore.
-
-## License
-
-MIT — feel free to fork, learn from, or build on this. If you do use it as a base, a credit link back is appreciated.
